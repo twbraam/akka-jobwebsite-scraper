@@ -19,7 +19,6 @@ class DeviceGroup(context: ActorContext[DeviceGroup.DeviceGroupMessage], groupId
   extends AbstractBehavior[DeviceGroup.DeviceGroupMessage] {
   import DeviceGroup._
   import DeviceManager._
-
   private var deviceIdToActor = Map.empty[String, ActorRef[Device.DeviceMessage]]
 
   context.log.info("DeviceGroup {} started", groupId)

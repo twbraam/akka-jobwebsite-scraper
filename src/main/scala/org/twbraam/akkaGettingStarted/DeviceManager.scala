@@ -58,7 +58,7 @@ class DeviceManager(context: ActorContext[DeviceManager.DeviceManagerMessage])
             ref ! trackMsg
           case None =>
             context.log.info("Creating device group actor for {}", groupId)
-            val groupActor = context.spawn(DeviceGroup(groupId), "group-" + groupId)
+            val groupActor: ActorRef[DeviceGroupMessage] = context.spawn(DeviceGroup(groupId), "group-" + groupId)
             context.watchWith(groupActor, DeviceGroupTerminated(groupId))
             groupActor ! trackMsg
             groupIdToActor += groupId -> groupActor
