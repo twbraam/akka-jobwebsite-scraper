@@ -1,4 +1,4 @@
-package org.twbraam.scraper42.websites
+package org.twbraam.jobwebsite_scraper.websites
 
 import java.net.URL
 import net.ruippeixotog.scalascraper.dsl.DSL.Extract._

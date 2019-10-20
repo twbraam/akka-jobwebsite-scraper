@@ -1,10 +1,10 @@
-package org.twbraam.scraper42
+package org.twbraam.jobwebsite_scraper
 
 import java.net.URL
 
 import akka.actor.typed._
 import akka.actor.typed.scaladsl._
-import org.twbraam.scraper42.websites.{FunctionalWorks, Website}
+import org.twbraam.jobwebsite_scraper.websites.{FunctionalWorks, Website}
 
 object KeywordScraper {
   sealed trait ScraperMessage

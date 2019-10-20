@@ -1,11 +1,11 @@
-package org.twbraam.scraper42
+package org.twbraam.jobwebsite_scraper
 
 import java.net.URL
 
 import akka.actor.testkit.typed.scaladsl.ScalaTestWithActorTestKit
 import org.scalatest.WordSpecLike
-import org.twbraam.scraper42.KeywordScraper.{ScrapePageRequest, ScrapePageResponse}
-import org.twbraam.scraper42.websites.FunctionalWorks
+import org.twbraam.jobwebsite_scraper.KeywordScraper.{ScrapePageRequest, ScrapePageResponse}
+import org.twbraam.jobwebsite_scraper.websites.FunctionalWorks
 import scala.concurrent.duration._
 
 import scala.collection.Set

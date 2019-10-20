@@ -1,11 +1,11 @@
-package org.twbraam.scraper42
+package org.twbraam.jobwebsite_scraper
 
 import java.net.URL
 
 import akka.actor.typed._
 import akka.actor.typed.scaladsl._
 import akka.actor.typed.SpawnProtocol
-import org.twbraam.scraper42.websites.{FunctionalWorks, TraversePage, Website}
+import org.twbraam.jobwebsite_scraper.websites.{FunctionalWorks, TraversePage, Website}
 
 import scala.collection.immutable.ListMap
 
