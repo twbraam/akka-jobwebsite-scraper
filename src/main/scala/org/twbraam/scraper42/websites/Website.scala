@@ -4,5 +4,5 @@ import java.net.URL
 
 trait Website {
   val url: URL
-  def parsePage(pageUrl: URL): Map[String, Int]
+  def parsePage(pageUrl: URL): Set[String]
 }

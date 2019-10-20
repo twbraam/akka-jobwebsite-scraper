@@ -31,7 +31,7 @@ class DeviceSpec extends ScalaTestWithActorTestKit with WordSpecLike {
       recordProbe.expectMessage(Device.TemperatureRecorded(requestId = 1))
 
       deviceActor ! Device.ReadTemperature(requestId = 2, readProbe.ref)
-      val response1 = readProbe.receiveMessage()
+      val response1: RespondTemperature = readProbe.receiveMessage()
       response1.requestId should ===(2)
       response1.value should ===(Some(24.0))
 
