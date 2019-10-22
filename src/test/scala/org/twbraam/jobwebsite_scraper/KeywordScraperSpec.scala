@@ -4,7 +4,7 @@ import java.net.URL
 
 import akka.actor.testkit.typed.scaladsl.ScalaTestWithActorTestKit
 import org.scalatest.WordSpecLike
-import org.twbraam.jobwebsite_scraper.KeywordScraper.{ScrapePageRequest, ScrapePageResponse}
+import org.twbraam.jobwebsite_scraper.KeywordScraper.{ScrapeJobRequest, ScrapeJobResponse}
 import org.twbraam.jobwebsite_scraper.websites.FunctionalWorks
 import scala.concurrent.duration._
 
@@ -14,10 +14,10 @@ class KeywordScraperSpec extends ScalaTestWithActorTestKit with WordSpecLike {
 
   "KeywordScraper" must {
     "Return a non-empty Set" in {
-      val probe = createTestProbe[ScrapePageResponse]()
+      val probe = createTestProbe[ScrapeJobResponse]()
       val worker = spawn(KeywordScraper.init(FunctionalWorks), "simple")
 
-      worker ! ScrapePageRequest(new URL("https://functional.works-hub.com/jobs/618"), probe.ref)
+      worker ! ScrapeJobRequest(new URL("https://functional.works-hub.com/jobs/618"), probe.ref)
 
       val response = probe.receiveMessage(10.seconds)
       response.scrapeResults shouldBe a[Set[_]]
