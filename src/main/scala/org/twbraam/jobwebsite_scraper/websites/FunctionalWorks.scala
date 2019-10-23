@@ -22,7 +22,7 @@ object FunctionalWorks extends Website {
       .toSet
   }
 
-  def extractLinks(pageUrl: URL): Set[URL] = {
+  def extractJobLinks(pageUrl: URL): Set[URL] = {
     val browser: Browser = JsoupBrowser()
     val doc: browser.DocumentType = browser.get(pageUrl.toString)
 
@@ -31,5 +31,16 @@ object FunctionalWorks extends Website {
     linkElements.map(_ >> attr("href")("a"))
       .map(link => new URL("https://" + pageUrl.getHost + link))
       .toSet
+  }
+
+  def extractPageLinks: Set[URL] = {
+    val browser = JsoupBrowser()
+    val doc = browser.get(url.toString)
+
+    val pageLinks: Seq[Element] = doc >> elementList(".pagination-list")
+    pageLinks.head.children
+
+    pageLinks.map(_ >> attr("href")("a")).map(link => new URL("https://" + url.getHost + link)).toSet
+    ???
   }
 }

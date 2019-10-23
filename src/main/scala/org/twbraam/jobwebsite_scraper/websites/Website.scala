@@ -5,5 +5,6 @@ import java.net.URL
 trait Website {
   val url: URL
   def parsePage(pageUrl: URL): Set[String]
-  def extractLinks(pageUrl: URL): Set[URL]
+  def extractJobLinks(pageUrl: URL): Set[URL]
+  def extractPageLinks: Set[URL]
 }

@@ -8,19 +8,19 @@ import org.twbraam.jobwebsite_scraper.websites.Website
 
 import scala.collection.immutable.ListMap
 
-object PageSupervisor {
-  sealed trait ScrapePageMessage
-  final case class ScrapePageRequest(url: URL, replyTo: ActorRef[ScrapePageResponse]) extends ScrapePageMessage
-  final case class ScrapePageResponse(scrapeResults: Map[String, Int]) extends ScrapePageMessage
-
+object ScraperSupervisor {
   import KeywordScraper._
 
-  def init(website: Website, replyTo: ActorRef[ScrapePageResponse]): Behavior[ScrapeJobResponse] =
-    createScrapers(website, replyTo)
+  sealed trait ScrapePageMessage
+  final case class ScrapePageRequest(url: URL, replyTo: ActorRef[ScrapePageResponse]) extends ScrapePageMessage
+  final case class ScrapePageResponse(scrapeResults: Map[String, Int], supervisorId: ActorRef[ScrapeJobResponse]) extends ScrapePageMessage
 
-  private def createScrapers(website: Website, replyTo: ActorRef[ScrapePageResponse]): Behavior[ScrapeJobResponse] =
+  def init(pageURL: URL, website: Website, replyTo: ActorRef[ScrapePageResponse]): Behavior[ScrapeJobResponse] =
+    createScrapers(pageURL, website, replyTo)
+
+  private def createScrapers(pageURL: URL, website: Website, replyTo: ActorRef[ScrapePageResponse]): Behavior[ScrapeJobResponse] =
     Behaviors.setup { context =>
-      val jobPageLinks: Set[URL] = website.extractLinks(website.url)
+      val jobPageLinks: Set[URL] = website.extractJobLinks(pageURL)
       val jobPageNum: Int = jobPageLinks.size
 
       val kwScraper = Behaviors.supervise(KeywordScraper.init(website)).onFailure[Exception](SupervisorStrategy.restart)
@@ -40,19 +40,18 @@ object PageSupervisor {
     Behaviors.receive { (context, message) =>
       message match {
         case ScrapeJobResponse(response) =>
-          context.log.info(s"Got result: $response")
+          context.log.info(s"Got job result: $response")
 
           val newAcc = response.foldLeft(acc)((acc, n) => {
             if (acc.isDefinedAt(n)) acc.updated(n, acc(n) + 1)
             else acc.updated(n, 1)
           })
 
-          context.log.info(s"Current acc: ${ListMap(newAcc.toSeq.sortWith(_._2 > _._2):_*)}")
-          if (numLeft <= 1) {
-            replyTo ! ScrapePageResponse(acc)
+          if (numLeft > 1) awaitResults(website, newAcc, numLeft - 1, replyTo)
+          else {
+            replyTo ! ScrapePageResponse(acc, context.self.ref)
             Behaviors.stopped
           }
-          else awaitResults(website, newAcc, numLeft - 1, replyTo)
       }
     }
 }
