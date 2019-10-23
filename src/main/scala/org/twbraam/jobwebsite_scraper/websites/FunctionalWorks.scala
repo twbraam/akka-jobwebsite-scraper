@@ -8,7 +8,10 @@ import net.ruippeixotog.scalascraper.dsl.DSL._
 import net.ruippeixotog.scalascraper.model._
 
 object FunctionalWorks extends Website {
+
   val url: URL = new URL("https://functional.works-hub.com/jobs/?tags=scala")
+  override val toString: String = "Functional Works"
+
   def parsePage(jobUrl: URL): Set[String] = {
     val browser = JsoupBrowser()
     val doc = browser.get(jobUrl.toString)
@@ -37,10 +40,10 @@ object FunctionalWorks extends Website {
     val browser = JsoupBrowser()
     val doc = browser.get(url.toString)
 
-    val pageLinks: Seq[Element] = doc >> elementList(".pagination-list")
-    pageLinks.head.children
+    val pageLinks: Iterable[Element#ThisType] = (doc >> elementList(".pagination-list")).head.children
 
-    pageLinks.map(_ >> attr("href")("a")).map(link => new URL("https://" + url.getHost + link)).toSet
-    ???
+    pageLinks.map(_ >> attr("href")("a"))
+      .map(link => new URL("https://" + url.getHost + link))
+      .toSet
   }
 }

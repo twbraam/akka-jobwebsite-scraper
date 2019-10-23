@@ -20,7 +20,6 @@ object KeywordScraper {
           context.log.info(s"Scraping page: $url")
 
           val resp = website.parsePage(url)
-          context.log.info(s"Response ${resp.mkString(", ")} sent to: $replyTo, shutting down...")
           replyTo ! ScrapeJobResponse(resp)
           Behaviors.same
       }

@@ -48,10 +48,9 @@ object ScraperSupervisor {
           })
 
           if (numLeft > 1) awaitResults(website, newAcc, numLeft - 1, replyTo)
-          else {
+          else
             replyTo ! ScrapePageResponse(acc, context.self.ref)
             Behaviors.stopped
-          }
       }
     }
 }

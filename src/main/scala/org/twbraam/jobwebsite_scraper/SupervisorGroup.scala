@@ -10,7 +10,7 @@ import scala.collection.immutable.ListMap
 
 object SupervisorGroup {
   sealed trait ScrapeWebsiteMessage
-  final case class ScrapeWebsiteRequest(url: URL, replyTo: ActorRef[ScrapeWebsiteResponse]) extends ScrapeWebsiteMessage
+  final case class ScrapeWebsiteRequest(website: Website, replyTo: ActorRef[ScrapeWebsiteResponse]) extends ScrapeWebsiteMessage
   final case class ScrapeWebsiteResponse(scrapeResults: Map[String, Int]) extends ScrapeWebsiteMessage
   import ScraperSupervisor._
   import KeywordScraper._
@@ -22,9 +22,11 @@ object SupervisorGroup {
     Behaviors.setup { context =>
       val pageLinks: Set[URL] = website.extractPageLinks
 
-      val supervisors: Set[ActorRef[ScrapeJobResponse]] = pageLinks.map(url =>
-        context.spawn(ScraperSupervisor.init(url, website, context.self.ref), "supervisor"))
-      supervisors.foreach(context.watch)
+      val supervisors: Set[ActorRef[ScrapeJobResponse]] =
+        pageLinks.zipWithIndex.map { case (url, n) =>
+          context.spawn(ScraperSupervisor.init(url, website, context.self.ref), s"supervisor-$n")
+
+        }
 
       awaitResults(website, Map.empty, supervisors, replyTo)
     }
@@ -42,11 +44,11 @@ object SupervisorGroup {
             else acc.updated(kw, value)
           }
 
-          if (children.size > 1) {
+          if (children.size > 1) awaitResults(website, newAcc, children - id, replyTo)
+          else {
             replyTo ! ScrapeWebsiteResponse(acc)
             Behaviors.stopped
           }
-          else awaitResults(website, newAcc, children - id, replyTo)
       }
     }
 }
