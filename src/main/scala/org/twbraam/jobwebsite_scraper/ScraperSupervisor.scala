@@ -4,6 +4,7 @@ import java.net.URL
 
 import akka.actor.typed._
 import akka.actor.typed.scaladsl._
+import org.twbraam.jobwebsite_scraper.SupervisorGroup.{ScrapeWebsiteResponse, SupervisorGroupMessage}
 import org.twbraam.jobwebsite_scraper.websites.Website
 
 import scala.collection.immutable.ListMap
@@ -11,14 +12,15 @@ import scala.collection.immutable.ListMap
 object ScraperSupervisor {
   import KeywordScraper._
 
-  sealed trait ScrapePageMessage
-  final case class ScrapePageRequest(url: URL, replyTo: ActorRef[ScrapePageResponse]) extends ScrapePageMessage
-  final case class ScrapePageResponse(scrapeResults: Map[String, Int], supervisorId: ActorRef[ScrapeJobResponse]) extends ScrapePageMessage
+  sealed trait ScraperSupervisorMessage
+  case class ScrapePageResponse(scrapeResults: Map[String, Int], id: Int) extends ScraperSupervisorMessage
+  final case class ScrapeJobResponseWrapper(msg: ScrapeJobResponse) extends ScraperSupervisorMessage
 
-  def init(pageURL: URL, website: Website, replyTo: ActorRef[ScrapePageResponse]): Behavior[ScrapeJobResponse] =
-    createScrapers(pageURL, website, replyTo)
+  def init(pageURL: URL, website: Website, replyTo: ActorRef[ScrapePageResponse], id: Int): Behavior[ScraperSupervisorMessage] =
+    createScrapers(pageURL, website, replyTo, id)
 
-  private def createScrapers(pageURL: URL, website: Website, replyTo: ActorRef[ScrapePageResponse]): Behavior[ScrapeJobResponse] =
+  private def createScrapers(pageURL: URL, website: Website, replyTo: ActorRef[ScrapePageResponse],
+                             id: Int): Behavior[ScraperSupervisorMessage] =
     Behaviors.setup { context =>
       val jobPageLinks: Set[URL] = website.extractJobLinks(pageURL)
       val jobPageNum: Int = jobPageLinks.size
@@ -27,19 +29,21 @@ object ScraperSupervisor {
       val pool = Routers.pool(poolSize = 4)(kwScraper)
       val router = context.spawn(pool, "worker-pool")
 
+      val refWrapper = context.messageAdapter(ScrapeJobResponseWrapper)
       jobPageLinks.foreach { url =>
-        router ! ScrapeJobRequest(url, context.self.ref)
+        router ! ScrapeJobRequest(url, refWrapper)
       }
 
-      awaitResults(website, Map.empty, jobPageNum, replyTo)
+      awaitResults(website, Map.empty, jobPageNum, replyTo, id)
     }
 
 
   private def awaitResults(website: Website, acc: Map[String, Int], numLeft: Int,
-                           replyTo: ActorRef[ScrapePageResponse]): Behavior[ScrapeJobResponse] =
+                           replyTo: ActorRef[ScrapePageResponse], id: Int): Behavior[ScraperSupervisorMessage] =
     Behaviors.receive { (context, message) =>
       message match {
-        case ScrapeJobResponse(response) =>
+        case ScrapeJobResponseWrapper(ScrapeJobResponse(response)) =>
+
           context.log.info(s"Got job result: $response")
 
           val newAcc = response.foldLeft(acc)((acc, n) => {
@@ -47,10 +51,15 @@ object ScraperSupervisor {
             else acc.updated(n, 1)
           })
 
-          if (numLeft > 1) awaitResults(website, newAcc, numLeft - 1, replyTo)
+          if (numLeft > 1) awaitResults(website, newAcc, numLeft - 1, replyTo, id)
           else
-            replyTo ! ScrapePageResponse(acc, context.self.ref)
+            replyTo ! ScrapePageResponse(acc, id)
             Behaviors.stopped
+
+        case unexpected => {
+          context.log.info(s"Unexpected message found: $unexpected, shutting down")
+          Behaviors.stopped
+        }
       }
     }
 }

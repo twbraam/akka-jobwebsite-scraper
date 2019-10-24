@@ -7,13 +7,13 @@ import akka.actor.typed.scaladsl._
 import org.twbraam.jobwebsite_scraper.websites.Website
 
 object KeywordScraper {
-  sealed trait ScrapeJobMessage
-  final case class ScrapeJobRequest(url: URL, replyTo: ActorRef[ScrapeJobResponse]) extends ScrapeJobMessage
-  final case class ScrapeJobResponse(scrapeResults: Set[String]) extends ScrapeJobMessage
+  sealed trait KeywordScraperMessage
+  final case class ScrapeJobRequest(url: URL, replyTo: ActorRef[ScrapeJobResponse]) extends KeywordScraperMessage
+  case class ScrapeJobResponse(scrapeResults: Set[String]) extends KeywordScraperMessage
 
-  def init(website: Website): Behavior[ScrapeJobRequest] = scraper(website)
+  def init(website: Website): Behavior[KeywordScraperMessage] = scraper(website)
 
-  private def scraper(website: Website): Behavior[ScrapeJobRequest] =
+  private def scraper(website: Website): Behavior[KeywordScraperMessage] =
     Behaviors.receive { (context, message) =>
       message match {
         case ScrapeJobRequest(url, replyTo) =>
