@@ -1,3 +1,6 @@
+Akka Jobwebsite Scraper
+====
+
 This project uses Akka to scrape multiple job websites filtered on Scala jobs and will extract "keywords" and will count their occurrences.
 Keywords are supposed to be names of Scala tools/frameworks that are mentioned in the job description and are currently defined by words that start with a capital letter.
 
