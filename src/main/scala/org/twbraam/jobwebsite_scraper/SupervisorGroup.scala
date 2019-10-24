@@ -23,6 +23,12 @@ object SupervisorGroup {
     Behaviors.setup { context =>
       val pageLinks: Set[URL] = website.extractPageLinks
 
+      val num_supervisors = 4
+      val scraperSupervisor = Behaviors.supervise(KeywordScraper.init(website)).onFailure[Exception](SupervisorStrategy.restart)
+      val pool = Routers.pool(poolSize = num_supervisors)(kwScraper)
+      val router = context.spawn(pool, s"keywordScraper-pool-$id")
+
+
       val refWrapper = context.messageAdapter(ScrapePageResponseWrapper)
       pageLinks.zipWithIndex.map { case (url, n) =>
         context.spawn(ScraperSupervisor.init(url, website, refWrapper, n), s"supervisor-$n")
