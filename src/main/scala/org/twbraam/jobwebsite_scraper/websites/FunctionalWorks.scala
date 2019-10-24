@@ -10,7 +10,8 @@ import net.ruippeixotog.scalascraper.model._
 object FunctionalWorks extends Website {
 
   val url: URL = new URL("https://functional.works-hub.com/jobs/?tags=scala")
-  override def toString: String = "Functional Works"
+
+  override def toString: String = "Functional-Works"
 
   def parsePage(jobUrl: URL): Set[String] = {
     val browser = JsoupBrowser()

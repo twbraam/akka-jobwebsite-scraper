@@ -10,51 +10,57 @@ object ScraperSupervisor {
   import KeywordScraper._
 
   sealed trait ScraperSupervisorMessage
-  final case class ScrapePageRequest(url: URL, replyTo: ActorRef[ScrapePageResponse]) extends ScraperSupervisorMessage
-  case class ScrapePageResponse(scrapeResults: Map[String, Int], id: Int) extends ScraperSupervisorMessage
+
+  final case class ScrapePageRequest(url: URL) extends ScraperSupervisorMessage
+
+  case class ScrapePageResponse(scrapeResults: Map[String, Int]) extends ScraperSupervisorMessage
 
   final case class ScrapeJobResponseWrapper(msg: ScrapeJobResponse) extends ScraperSupervisorMessage
 
 
-
-  def init(website: Website, id: Int,
+  def init(website: Website,
            replyTo: ActorRef[ScrapePageResponse]): Behavior[ScraperSupervisorMessage] = {
     Behaviors.setup { context =>
+      context.log.info(s"Supervisor $website initialized")
+
       val kwScraper = Behaviors.supervise(KeywordScraper.init(website))
         .onFailure[Exception](SupervisorStrategy.restart)
       val pool = Routers.pool(poolSize = 4)(kwScraper)
-      val router: ActorRef[KeywordScraperMessage] = context.spawn(pool, s"keywordScraper-pool-$id")
-      awaitFirstMessage(website, replyTo: ActorRef[ScrapePageResponse], router, id)
+      val router: ActorRef[KeywordScraperMessage] = context.spawnAnonymous(pool)
+      awaitFirstMessage(website, replyTo: ActorRef[ScrapePageResponse], router)
     }
   }
 
   private def awaitFirstMessage(website: Website, replyTo: ActorRef[ScrapePageResponse],
-                                scraperPool: ActorRef[KeywordScraperMessage], id: Int): Behavior[ScraperSupervisorMessage] =
+                                scraperPool: ActorRef[KeywordScraperMessage]): Behavior[ScraperSupervisorMessage] =
     Behaviors.receive { (context, message) =>
       message match {
-        case ScrapePageRequest(url, replyTo) =>
+        case ScrapePageRequest(url) =>
           val jobPageLinks: Set[URL] = website.extractJobLinks(url)
-          val jobPageNum: Int = jobPageLinks.size
+          val jobAmount: Int = jobPageLinks.size
           val refWrapper = context.messageAdapter(ScrapeJobResponseWrapper)
           jobPageLinks.foreach { url => scraperPool ! ScrapeJobRequest(url, refWrapper) }
 
-          awaitMessage(website, Map.empty, jobPageNum, replyTo, id, scraperPool)
+          awaitMessage(website, Map.empty, jobAmount, replyTo, scraperPool)
+        case unexpected =>
+          context.log.info(s"Unexpected message found: $unexpected, shutting down")
+          Behaviors.stopped
         }
       }
 
   private def awaitMessage(website: Website, acc: Map[String, Int], numLeft: Int,
-                           replyTo: ActorRef[ScrapePageResponse], id: Int,
+                           replyTo: ActorRef[ScrapePageResponse],
                            scraperPool: ActorRef[KeywordScraperMessage]): Behavior[ScraperSupervisorMessage] =
     Behaviors.receive { (context, message) =>
       message match {
-        case ScrapePageRequest(url, replyTo) =>
+        case ScrapePageRequest(url) =>
           context.log.info(s"Received request")
           val jobPageLinks: Set[URL] = website.extractJobLinks(url)
-          val jobPageNum: Int = jobPageLinks.size
+          val jobAmount: Int = jobPageLinks.size
           val refWrapper = context.messageAdapter(ScrapeJobResponseWrapper)
           jobPageLinks.foreach { url => scraperPool ! ScrapeJobRequest(url, refWrapper) }
 
-          awaitMessage(website, acc, jobPageNum + numLeft, replyTo, id, scraperPool)
+          awaitMessage(website, acc, jobAmount + numLeft, replyTo, scraperPool)
 
         case ScrapeJobResponseWrapper(ScrapeJobResponse(response)) =>
           context.log.info(s"Received scraping result: $response")
@@ -63,10 +69,10 @@ object ScraperSupervisor {
             else acc.updated(n, 1)
           })
 
-          if (numLeft > 1) awaitMessage(website, newAcc, numLeft - 1, replyTo, id, scraperPool)
+          if (numLeft > 1) awaitMessage(website, newAcc, numLeft - 1, replyTo, scraperPool)
           else {
-            context.log.info(s"ScrapeSupervisor $id Shutting down")
-            replyTo ! ScrapePageResponse(acc, id)
+            context.log.info(s"ScrapeSupervisor shutting down")
+            replyTo ! ScrapePageResponse(acc)
             Behaviors.same
           }
 
