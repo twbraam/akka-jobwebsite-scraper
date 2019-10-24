@@ -20,7 +20,8 @@ object KeywordScraper {
           context.log.info(s"Scraping page: $url")
 
           val resp = website.parsePage(url)
-          replyTo ! ScrapeJobResponse(resp)
+
+          replyTo ! ScrapeJobResponse(resp.map(_.toLowerCase))
           Behaviors.same
       }
     }

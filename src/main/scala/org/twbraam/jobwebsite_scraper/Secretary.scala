@@ -9,10 +9,12 @@ import org.twbraam.jobwebsite_scraper.websites.Website
 import scala.collection.immutable.ListMap
 
 object Secretary {
+  import SupervisorGroup._
+
   sealed trait SecretaryMessage
   final case class SecretaryRequest(website: Website) extends SecretaryMessage
   final case class SecretaryResponse(scrapeResults: Map[String, Int]) extends SecretaryMessage
-  import SupervisorGroup._
+
 
   def init(replyTo: ActorRef[SecretaryResponse]): Behavior[SupervisorGroupMessage] =
     secretary(Set(), Map.empty, replyTo)
@@ -35,10 +37,9 @@ object Secretary {
             replyTo ! SecretaryResponse(acc)
             Behaviors.stopped
           }
-        case unexpected => {
+        case unexpected =>
           context.log.info(s"Unexpected message found: $unexpected, shutting down")
           Behaviors.stopped
-        }
       }
     }
 }

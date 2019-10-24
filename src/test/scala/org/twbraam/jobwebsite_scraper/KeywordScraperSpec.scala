@@ -15,11 +15,12 @@ class KeywordScraperSpec extends ScalaTestWithActorTestKit with WordSpecLike {
   "KeywordScraper" must {
     "Return a non-empty Set" in {
       val probe = createTestProbe[ScrapeJobResponse]()
-      val worker = spawn(KeywordScraper.init(FunctionalWorks), "simple")
+      val worker = spawn(KeywordScraper.init(FunctionalWorks), "root")
 
       worker ! ScrapeJobRequest(new URL("https://functional.works-hub.com/jobs/618"), probe.ref)
 
       val response = probe.receiveMessage(10.seconds)
+      println(s"Got repsonse: ${response.scrapeResults}")
       response.scrapeResults shouldBe a[Set[_]]
       response.scrapeResults should not be empty
     }

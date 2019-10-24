@@ -8,23 +8,24 @@ import org.twbraam.jobwebsite_scraper.ScraperSupervisor.ScrapePageResponse
 import org.twbraam.jobwebsite_scraper.websites.Website
 
 object SupervisorGroup {
-  sealed trait SupervisorGroupMessage
-  final case class ScrapeWebsiteRequest(website: Website, replyTo: ActorRef[ScrapeWebsiteResponse]) extends SupervisorGroupMessage
-  final case class ScrapeWebsiteResponse(website: Website, scrapeResults: Map[String, Int]) extends SupervisorGroupMessage
-
-  final case class ScrapePageResponseWrapper(msg: ScrapePageResponse) extends SupervisorGroupMessage
-  import KeywordScraper._
   import ScraperSupervisor._
 
-  def init(website: Website, replyTo: ActorRef[ScrapeWebsiteResponse]): Behavior[ScraperSupervisorMessage] =
+  sealed trait SupervisorGroupMessage
+  final case class ScrapeWebsiteRequest(website: Website, replyTo: ActorRef[ScrapeWebsiteResponse]) extends SupervisorGroupMessage
+  case class ScrapeWebsiteResponse(website: Website, scrapeResults: Map[String, Int]) extends SupervisorGroupMessage
+
+  final case class ScrapePageResponseWrapper(msg: ScrapePageResponse) extends SupervisorGroupMessage
+
+  def init(website: Website, replyTo: ActorRef[ScrapeWebsiteResponse]): Behavior[SupervisorGroupMessage] =
     createSupervisors(website, replyTo)
 
-  private def createSupervisors(website: Website, replyTo: ActorRef[ScrapeWebsiteResponse]): Behavior[ScraperSupervisorMessage] =
+  private def createSupervisors(website: Website, replyTo: ActorRef[ScrapeWebsiteResponse]): Behavior[SupervisorGroupMessage] =
     Behaviors.setup { context =>
       val pageLinks: Set[URL] = website.extractPageLinks
 
+      val refWrapper = context.messageAdapter(ScrapePageResponseWrapper)
       pageLinks.zipWithIndex.map { case (url, n) =>
-        context.spawn(ScraperSupervisor.init(url, website, context.self.ref, n), s"supervisor-$n")
+        context.spawn(ScraperSupervisor.init(url, website, refWrapper, n), s"supervisor-$n")
       }
 
       val children = (0 until pageLinks.size).toList
@@ -33,10 +34,10 @@ object SupervisorGroup {
 
 
   private def awaitResults(website: Website, acc: Map[String, Int], children: List[Int],
-                           replyTo: ActorRef[ScrapeWebsiteResponse]): Behavior[ScraperSupervisorMessage] =
+                           replyTo: ActorRef[ScrapeWebsiteResponse]): Behavior[SupervisorGroupMessage] =
     Behaviors.receive { (context, message) =>
       message match {
-        case ScrapePageResponse(response, id) =>
+        case ScrapePageResponseWrapper(ScrapePageResponse(response, id)) =>
           val newChildren = children.filterNot(_ == id)
           context.log.info(s"Got page $id result: $response, still waiting on: $newChildren")
 
@@ -50,10 +51,10 @@ object SupervisorGroup {
             replyTo ! ScrapeWebsiteResponse(website, acc)
             Behaviors.stopped
           }
-        case unexpected => {
+
+        case unexpected =>
           context.log.info(s"Unexpected message found: $unexpected, shutting down")
           Behaviors.stopped
-        }
       }
     }
 }
