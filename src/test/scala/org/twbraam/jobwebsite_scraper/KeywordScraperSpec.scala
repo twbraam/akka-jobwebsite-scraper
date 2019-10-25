@@ -33,9 +33,9 @@ class KeywordScraperSpec extends ScalaTestWithActorTestKit with WordSpecLike {
     worker ! ScrapeJobRequest(url, probe.ref)
 
     val response = probe.receiveMessage(10.seconds)
-    probe.stop
 
     println(s"Got repsonse: ${response.scrapeResults}")
+
     response.scrapeResults shouldBe a[Set[_]]
     response.scrapeResults should not be empty
   }
